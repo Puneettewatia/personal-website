@@ -1,5 +1,3 @@
-# personal-website
-"The Last Alibi" in this you play as detective and solve mystery cases
 import os
 import json
 import random
@@ -18,11 +16,18 @@ def setup_gemini():
     Setup Gemini API
     Replace with your API key
     """
-    API_KEY = "AQ.Ab8RN6K4-jwWaDAGCghRRGWUkta1T8oNRCKDDOPCxEk_PXYJYg"
+    API_KEY = "AQ.Ab8RN6ImZTTMKCBwhN6iwfnvw8Rej7z7GOqo_XhLTmvBMNUNXw"
 
     genai.configure(api_key=API_KEY)
 
-    return genai.GenerativeModel("gemini-2.5-flash")
+    return genai.GenerativeModel(
+        "models/gemini-2.0-flash-lite",
+        generation_config=genai.GenerationConfig(
+            max_output_tokens=400,
+            temperature=0.75,
+            top_p=0.95,
+        ),
+    )
 
 
 # =====================================================
@@ -264,22 +269,37 @@ logical clues
 interesting mystery
 """
 
+    text = ""
+
     try:
 
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                max_output_tokens=400,
+                temperature=0.75,
+                top_p=0.95,
+            ),
+        )
 
         text = response.text
-
         start = text.find("{")
-        end = text.rfind("}") + 1
 
-        json_text = text[start:end]
+        if start == -1:
+            raise ValueError("No JSON object found in model response")
 
-        return json.loads(json_text)
+        decoder = json.JSONDecoder()
+        case_data, end = decoder.raw_decode(text[start:])
+
+        return case_data
 
     except Exception as e:
 
         print("Generation failed:", e)
+        if text:
+            print("Response text was:", repr(text))
+        else:
+            print("No response text available from the model.")
 
         return None
 
